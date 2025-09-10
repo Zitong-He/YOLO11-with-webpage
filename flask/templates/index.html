@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv11 智能物体检测</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6e48aa;
+            --secondary-color: #9d50bb;
+            --dark-bg: #121212;
+            --dark-card: #1e1e1e;
+            --dark-text: #f0f0f0;
+            --light-bg: #f5f7fa;
+            --light-card: #ffffff;
+            --light-text: #333333;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-bg);
+            color: var(--light-text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        body.dark-mode {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--light-text);
+            font-weight: 300;
+            margin-bottom: 1.5rem;
+        }
+
+        body.dark-mode .subtitle {
+            color: var(--dark-text);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--light-text);
+        }
+
+        body.dark-mode .theme-toggle {
+            color: var(--dark-text);
+        }
+
+        .upload-box {
+            border: 2px dashed var(--primary-color);
+            border-radius: 10px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 2rem;
+            background-color: var(--light-card);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.dark-mode .upload-box {
+            background-color: var(--dark-card);
+            border-color: var(--secondary-color);
+        }
+
+        .upload-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .upload-box:hover {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .upload-box i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        body.dark-mode .upload-box i {
+            color: var(--secondary-color);
+        }
+
+        .upload-box p {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-box small {
+            color: #777;
+        }
+
+        body.dark-mode .upload-box small {
+            color: #aaa;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .media-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .media-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .media-box {
+            background-color: var(--light-card);
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .media-box {
+            background-color: var(--dark-card);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .media-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .media-box:hover {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .media-box h3 {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        body.dark-mode .media-box h3 {
+            color: var(--secondary-color);
+        }
+
+        .media-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+        }
+
+        body.dark-mode .media-wrapper {
+            background-color: #2a2a2a;
+        }
+
+        img, video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .media-wrapper:hover .video-controls {
+            opacity: 1;
+        }
+
+        .video-controls button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .video-controls button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .stats {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 10px;
+            padding: 1.5rem;
+            color: white;
+            display: none;
+            margin-bottom: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-item h4 {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+
+        body.dark-mode .btn-secondary {
+            color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(110, 72, 170, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .btn-secondary:hover {
+            background-color: rgba(157, 80, 187, 0.1);
+        }
+
+        .loading {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .detected-objects {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            display: none;
+        }
+
+        .object-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .object-tag {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: #777;
+            font-size: 0.9rem;
+        }
+
+        body.dark-mode footer {
+            color: #aaa;
+        }
+
+        .file-type-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .file-type-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 20px;
+            background-color: #eee;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        body.dark-mode .file-type-btn {
+            background-color: #333;
+            color: white;
+        }
+
+        .file-type-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        body.dark-mode .file-type-btn.active {
+            background-color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>YOLOv11 智能物体检测</h1>
+                <p class="subtitle">基于深度学习的实时物体检测系统</p>
+            </div>
+            <button class="theme-toggle" id="theme-toggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </header>
+
+        <div class="file-type-selector">
+            <button class="file-type-btn active" id="image-btn">
+                <i class="fas fa-image"></i> 图片检测
+            </button>
+            <button class="file-type-btn" id="video-btn">
+                <i class="fas fa-video"></i> 视频检测
+            </button>
+        </div>
+
+        <div class="upload-box" id="upload-area">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p id="loading-text">正在分析图像...</p>
+            </div>
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p id="upload-text">点击或拖拽图片到此处上传</p>
+            <small id="upload-hint">支持 JPG, PNG 格式，最大 10MB</small>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+
+        <div class="media-container">
+            <div class="media-box">
+                <h3><i class="fas fa-image"></i> 原始媒体</h3>
+                <div class="media-wrapper">
+                    <img id="original-image" src="" alt="原始图片">
+                    <video id="original-video" controls style="display: none;"></video>
+                    <div class="video-controls" id="original-video-controls" style="display: none;">
+                        <button id="original-play-pause"><i class="fas fa-play"></i></button>
+                    </div>
+                    <div class="placeholder">
+                        <i class="fas fa-image" style="font-size: 3rem; color: #ccc;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="media-box">
+                <h3><i class="fas fa-search"></i> 检测结果</h3>
+                <div class="media-wrapper">
+                    <img id="result-image" src="" alt="检测结果">
+                    <video id="result-video" controls style="display: none;"></video>
+                    <div class="video-controls" id="result-video-controls" style="display: none;">
+                        <button id="result-play-pause"><i class="fas fa-play"></i></button>
+                    </div>
+                    <div class="detected-objects" id="detected-objects">
+                        <div class="object-tags" id="object-tags"></div>
+                    </div>
+                    <div class="placeholder">
+                        <i class="fas fa-search" style="font-size: 3rem; color: #ccc;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats" id="stats">
+            <h3><i class="fas fa-chart-bar"></i> 检测统计</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h4>推理时间</h4>
+                    <div class="stat-value" id="inference-time">0</div>
+                    <small>毫秒</small>
+                </div>
+                <div class="stat-item">
+                    <h4>检测对象</h4>
+                    <div class="stat-value" id="object-count">0</div>
+                    <small>个</small>
+                </div>
+                <div class="stat-item">
+                    <h4>媒体尺寸</h4>
+                    <div class="stat-value" id="media-size">0×0</div>
+                    <small>像素</small>
+                </div>
+                <div class="stat-item">
+                    <h4>模型版本</h4>
+                    <div class="stat-value">YOLOv11</div>
+                    <small>Ultralytics</small>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" id="download-btn">
+                    <i class="fas fa-download"></i> 下载结果
+                </button>
+                <button class="btn btn-secondary" id="reset-btn">
+                    <i class="fas fa-redo"></i> 重新开始
+                </button>
+            </div>
+        </div>
+
+        <footer>
+            <p>© 2025 YOLOv11 物体检测系统 | 基于深度学习技术 | 实时高性能检测</p>
+        </footer>
+    </div>
+
+    <script>
+        // DOM 元素
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const originalImage = document.getElementById('original-image');
+        const originalVideo = document.getElementById('original-video');
+        const resultImage = document.getElementById('result-image');
+        const resultVideo = document.getElementById('result-video');
+        const statsDiv = document.getElementById('stats');
+        const inferenceTime = document.getElementById('inference-time');
+        const objectCount = document.getElementById('object-count');
+        const mediaSize = document.getElementById('media-size');
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const loadingDiv = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const themeToggle = document.getElementById('theme-toggle');
+        const detectedObjects = document.getElementById('detected-objects');
+        const objectTags = document.getElementById('object-tags');
+        const body = document.body;
+        const imageBtn = document.getElementById('image-btn');
+        const videoBtn = document.getElementById('video-btn');
+        const uploadText = document.getElementById('upload-text');
+        const uploadHint = document.getElementById('upload-hint');
+        const originalPlayPauseBtn = document.getElementById('original-play-pause');
+        const resultPlayPauseBtn = document.getElementById('result-play-pause');
+        const originalVideoControls = document.getElementById('original-video-controls');
+        const resultVideoControls = document.getElementById('result-video-controls');
+
+        // 当前模式：'image' 或 'video'
+        let currentMode = 'image';
+
+        // 初始化
+        function init() {
+            // 设置默认模式
+            setMode('image');
+
+            // 添加事件监听器
+            imageBtn.addEventListener('click', () => setMode('image'));
+            videoBtn.addEventListener('click', () => setMode('video'));
+
+            // 主题切换
+            themeToggle.addEventListener('click', toggleTheme);
+
+            // 上传区域交互
+            uploadArea.addEventListener('click', () => fileInput.click());
+            setupDragAndDrop();
+
+            // 文件输入变化
+            fileInput.addEventListener('change', handleFileUpload);
+
+            // 重置按钮
+            resetBtn.addEventListener('click', resetApp);
+
+            // 视频控制按钮
+            originalPlayPauseBtn.addEventListener('click', toggleOriginalVideoPlayback);
+            resultPlayPauseBtn.addEventListener('click', toggleResultVideoPlayback);
+
+            // 视频播放状态更新
+            originalVideo.addEventListener('play', () => updateVideoControls(originalVideo, originalPlayPauseBtn));
+            originalVideo.addEventListener('pause', () => updateVideoControls(originalVideo, originalPlayPauseBtn));
+            resultVideo.addEventListener('play', () => updateVideoControls(resultVideo, resultPlayPauseBtn));
+            resultVideo.addEventListener('pause', () => updateVideoControls(resultVideo, resultPlayPauseBtn));
+        }
+
+        // 设置当前模式（图片或视频）
+        function setMode(mode) {
+            currentMode = mode;
+
+            // 更新按钮状态
+            imageBtn.classList.toggle('active', mode === 'image');
+            videoBtn.classList.toggle('active', mode === 'video');
+
+            // 更新上传提示
+            if (mode === 'image') {
+                uploadText.textContent = '点击或拖拽图片到此处上传';
+                uploadHint.textContent = '支持 JPG, PNG 格式，最大 10MB';
+                fileInput.accept = 'image/*';
+            } else {
+                uploadText.textContent = '点击或拖拽视频到此处上传';
+                uploadHint.textContent = '支持 MP4, MOV 格式，最大 50MB';
+                fileInput.accept = 'video/*';
+            }
+
+            // 重置应用状态
+            resetApp();
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            body.classList.toggle('dark-mode');
+            const icon = themeToggle.querySelector('i');
+            if (body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        }
+
+        // 设置拖放功能
+        function setupDragAndDrop() {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'var(--secondary-color)';
+                uploadArea.style.backgroundColor = 'rgba(110, 72, 170, 0.1)';
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = 'var(--primary-color)';
+                uploadArea.style.backgroundColor = '';
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'var(--primary-color)';
+                uploadArea.style.backgroundColor = '';
+
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileUpload();
+                }
+            });
+        }
+
+        // 处理文件上传
+        // 修改你的前端JavaScript代码
+        // 更新UI显示结果的函数
+function updateUIWithResults(data) {
+    console.log('更新UI:', data);
+
+    // 隐藏加载动画
+    const loadingDiv = document.getElementById('loading');
+    if (loadingDiv) {
+        loadingDiv.classList.remove('active');
+    }
+
+    // 根据返回的数据类型显示不同内容
+    if (data.type === 'image') {
+        // 显示原始图片
+        const originalImg = document.getElementById('original-image');
+        if (originalImg) {
+            originalImg.src = data.original;
+            originalImg.style.display = 'block';
+        }
+
+        // 显示结果图片
+        const resultImg = document.getElementById('result-image');
+        if (resultImg) {
+            resultImg.src = data.result;
+            resultImg.style.display = 'block';
+        }
+
+        // 隐藏视频元素
+        const originalVideo = document.getElementById('original-video');
+        const resultVideo = document.getElementById('result-video');
+        if (originalVideo) originalVideo.style.display = 'none';
+        if (resultVideo) resultVideo.style.display = 'none';
+    } else if (data.type === 'video') {
+        // 显示原始视频
+        const originalVideo = document.getElementById('original-video');
+        if (originalVideo) {
+            originalVideo.src = data.original;
+            originalVideo.style.display = 'block';
+        }
+
+        // 显示结果视频
+        const resultVideo = document.getElementById('result-video');
+        if (resultVideo) {
+            resultVideo.src = data.result;
+            resultVideo.style.display = 'block';
+        }
+
+        // 隐藏图片元素
+        const originalImg = document.getElementById('original-image');
+        const resultImg = document.getElementById('result-image');
+        if (originalImg) originalImg.style.display = 'none';
+        if (resultImg) resultImg.style.display = 'none';
+    }
+
+    // 更新统计信息
+    const statsDiv = document.getElementById('stats');
+    if (statsDiv && data.stats) {
+        statsDiv.style.display = 'block';
+
+        // 更新推理时间
+        const inferenceTimeElem = document.getElementById('inference-time');
+        if (inferenceTimeElem) {
+            inferenceTimeElem.textContent = data.stats.inference_time
+                ? Math.round(data.stats.inference_time)
+                : 'N/A';
+        }
+
+        // 更新检测对象数量
+        const objectCountElem = document.getElementById('object-count');
+        if (objectCountElem && data.stats.detected_objects) {
+            objectCountElem.textContent = data.stats.detected_objects.length;
+        }
+
+        // 更新媒体尺寸
+        const mediaSizeElem = document.getElementById('media-size');
+        if (mediaSizeElem && data.stats.resolution) {
+            mediaSizeElem.textContent = data.stats.resolution;
+        }
+
+        // 更新检测到的对象标签
+        const objectTags = document.getElementById('object-tags');
+        const detectedObjects = document.getElementById('detected-objects');
+        if (objectTags && detectedObjects && data.stats.detected_objects) {
+            objectTags.innerHTML = '';
+            data.stats.detected_objects.forEach(obj => {
+                const tag = document.createElement('span');
+                tag.className = 'object-tag';
+                tag.textContent = obj;
+                objectTags.appendChild(tag);
+            });
+            detectedObjects.style.display = 'block';
+        }
+    }
+
+    // 显示下载和重置按钮
+    const downloadBtn = document.getElementById('download-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    if (downloadBtn) downloadBtn.style.display = 'inline-flex';
+    if (resetBtn) resetBtn.style.display = 'inline-flex';
+}
+
+// 下载结果功能
+function downloadResult() {
+    const resultImg = document.getElementById('result-image');
+    const resultVideo = document.getElementById('result-video');
+
+    let downloadUrl = '';
+    if (resultImg && resultImg.style.display !== 'none') {
+        downloadUrl = resultImg.src;
+    } else if (resultVideo && resultVideo.style.display !== 'none') {
+        downloadUrl = resultVideo.src;
+    }
+
+    if (downloadUrl) {
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = 'detection_result.' + (downloadUrl.includes('.mp4') ? 'mp4' : 'jpg');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+// 重置应用
+function resetApp() {
+    // 重置文件输入
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) fileInput.value = '';
+
+    // 隐藏所有媒体元素
+    const elementsToHide = [
+        'original-image', 'result-image',
+        'original-video', 'result-video',
+        'stats', 'detected-objects'
+    ];
+
+    elementsToHide.forEach(id => {
+        const elem = document.getElementById(id);
+        if (elem) elem.style.display = 'none';
+    });
+
+    // 隐藏按钮
+    const downloadBtn = document.getElementById('download-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    if (downloadBtn) downloadBtn.style.display = 'none';
+    if (resetBtn) resetBtn.style.display = 'none';
+
+    // 显示上传区域的图标和文字
+    const uploadIcon = document.querySelector('.upload-box i');
+    const uploadText = document.getElementById('upload-text');
+    const uploadHint = document.getElementById('upload-hint');
+    if (uploadIcon) uploadIcon.style.display = '';
+    if (uploadText) uploadText.style.display = '';
+    if (uploadHint) uploadHint.style.display = '';
+}
+
+// 为下载和重置按钮添加事件监听
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadBtn = document.getElementById('download-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadResult);
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetApp);
+    }
+
+    // 初始化隐藏按钮
+    if (downloadBtn) downloadBtn.style.display = 'none';
+    if (resetBtn) resetBtn.style.display = 'none';
+});
+        function handleFileUpload() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('mode', currentMode); // 'image' 或 'video'
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('上传成功:', data);
+                // 更新UI显示结果
+                updateUIWithResults(data);
+            })
+            .catch(error => {
+                console.error('上传错误:', error);
+                alert('处理文件时出错: ' + error.message);
+            });
+        }
+        // 显示检测到的对象
+        function displayDetectedObjects(objects) {
+            objectTags.innerHTML = '';
+            const uniqueObjects = [...new Set(objects)]; // 去重
+
+            uniqueObjects.forEach(obj => {
+                const tag = document.createElement('span');
+                tag.className = 'object-tag';
+                tag.textContent = obj;
+                objectTags.appendChild(tag);
+            });
+            detectedObjects.style.display = 'block';
+        }
+
+        // 显示错误
+        function showError(message) {
+            loadingDiv.classList.remove('active');
+            uploadArea.querySelector('i').style.display = '';
+            uploadArea.querySelector('p').style.display = '';
+            uploadArea.querySelector('small').style.display = '';
+
+            alert(message);
+        }
+
+        // 重置应用
+        function resetApp() {
+            fileInput.value = '';
+
+            // 重置图片显示
+            originalImage.src = '';
+            originalImage.style.display = 'none';
+            resultImage.src = '';
+            resultImage.style.display = 'none';
+
+            // 重置视频显示
+            originalVideo.src = '';
+            originalVideo.style.display = 'none';
+            originalVideoControls.style.display = 'none';
+            resultVideo.src = '';
+            resultVideo.style.display = 'none';
+            resultVideoControls.style.display = 'none';
+
+            // 重置统计信息
+            statsDiv.style.display = 'none';
+            detectedObjects.style.display = 'none';
+
+            // 重置上传区域
+            uploadArea.querySelector('i').style.display = '';
+            uploadArea.querySelector('p').style.display = '';
+            uploadArea.querySelector('small').style.display = '';
+        }
+
+        // 切换原始视频播放状态
+        function toggleOriginalVideoPlayback() {
+            if (originalVideo.paused) {
+                originalVideo.play();
+            } else {
+                originalVideo.pause();
+            }
+        }
+
+        // 切换结果视频播放状态
+        function toggleResultVideoPlayback() {
+            if (resultVideo.paused) {
+                resultVideo.play();
+            } else {
+                resultVideo.pause();
+            }
+        }
+
+        // 更新视频控制按钮
+        function updateVideoControls(videoElement, button) {
+            const icon = button.querySelector('i');
+            if (videoElement.paused) {
+                icon.classList.remove('fa-pause');
+                icon.classList.add('fa-play');
+            } else {
+                icon.classList.remove('fa-play');
+                icon.classList.add('fa-pause');
+            }
+        }
+        // 更新UI显示结果的函数
+        function updateUIWithResults(data) {
+            console.log('更新UI:', data);
+
+            // 隐藏加载动画
+            const loadingDiv = document.getElementById('loading');
+            if (loadingDiv) {
+                loadingDiv.classList.remove('active');
+            }
+
+            // 根据返回的数据类型显示不同内容
+            if (data.type === 'image') {
+                // 显示原始图片
+                const originalImg = document.getElementById('original-image');
+                if (originalImg) {
+                    originalImg.src = data.original;
+                    originalImg.style.display = 'block';
+                }
+
+                // 显示结果图片
+                const resultImg = document.getElementById('result-image');
+                if (resultImg) {
+                    resultImg.src = data.result;
+                    resultImg.style.display = 'block';
+                }
+
+                // 隐藏视频元素
+                const originalVideo = document.getElementById('original-video');
+                const resultVideo = document.getElementById('result-video');
+                if (originalVideo) originalVideo.style.display = 'none';
+                if (resultVideo) resultVideo.style.display = 'none';
+            } else if (data.type === 'video') {
+                // 显示原始视频
+                const originalVideo = document.getElementById('original-video');
+                if (originalVideo) {
+                    originalVideo.src = data.original;
+                    originalVideo.style.display = 'block';
+                }
+
+                // 显示结果视频
+                const resultVideo = document.getElementById('result-video');
+                if (resultVideo) {
+                    resultVideo.src = data.result;
+                    resultVideo.style.display = 'block';
+                }
+
+                // 隐藏图片元素
+                const originalImg = document.getElementById('original-image');
+                const resultImg = document.getElementById('result-image');
+                if (originalImg) originalImg.style.display = 'none';
+                if (resultImg) resultImg.style.display = 'none';
+            }
+
+            // 更新统计信息
+            const statsDiv = document.getElementById('stats');
+            if (statsDiv && data.stats) {
+                statsDiv.style.display = 'block';
+
+                // 更新推理时间
+                const inferenceTimeElem = document.getElementById('inference-time');
+                if (inferenceTimeElem) {
+                    inferenceTimeElem.textContent = data.stats.inference_time
+                        ? Math.round(data.stats.inference_time)
+                        : 'N/A';
+                }
+
+                // 更新检测对象数量
+                const objectCountElem = document.getElementById('object-count');
+                if (objectCountElem && data.stats.detected_objects) {
+                    objectCountElem.textContent = data.stats.detected_objects.length;
+                }
+
+                // 更新媒体尺寸
+                const mediaSizeElem = document.getElementById('media-size');
+                if (mediaSizeElem && data.stats.resolution) {
+                    mediaSizeElem.textContent = data.stats.resolution;
+                }
+
+                // 更新检测到的对象标签
+                const objectTags = document.getElementById('object-tags');
+                const detectedObjects = document.getElementById('detected-objects');
+                if (objectTags && detectedObjects && data.stats.detected_objects) {
+                    objectTags.innerHTML = '';
+                    data.stats.detected_objects.forEach(obj => {
+                        const tag = document.createElement('span');
+                        tag.className = 'object-tag';
+                        tag.textContent = obj;
+                        objectTags.appendChild(tag);
+                    });
+                    detectedObjects.style.display = 'block';
+                }
+            }
+
+            // 显示下载和重置按钮
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            if (downloadBtn) downloadBtn.style.display = 'inline-flex';
+            if (resetBtn) resetBtn.style.display = 'inline-flex';
+        }
+
+        // 下载结果功能
+        function downloadResult() {
+            const resultImg = document.getElementById('result-image');
+            const resultVideo = document.getElementById('result-video');
+
+            let downloadUrl = '';
+            if (resultImg && resultImg.style.display !== 'none') {
+                downloadUrl = resultImg.src;
+            } else if (resultVideo && resultVideo.style.display !== 'none') {
+                downloadUrl = resultVideo.src;
+            }
+
+            if (downloadUrl) {
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = 'detection_result.' + (downloadUrl.includes('.mp4') ? 'mp4' : 'jpg');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // 重置应用
+        function resetApp() {
+            // 重置文件输入
+            const fileInput = document.getElementById('file-input');
+            if (fileInput) fileInput.value = '';
+
+            // 隐藏所有媒体元素
+            const elementsToHide = [
+                'original-image', 'result-image',
+                'original-video', 'result-video',
+                'stats', 'detected-objects'
+            ];
+
+            elementsToHide.forEach(id => {
+                const elem = document.getElementById(id);
+                if (elem) elem.style.display = 'none';
+            });
+
+            // 隐藏按钮
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            if (downloadBtn) downloadBtn.style.display = 'none';
+            if (resetBtn) resetBtn.style.display = 'none';
+
+            // 显示上传区域的图标和文字
+            const uploadIcon = document.querySelector('.upload-box i');
+            const uploadText = document.getElementById('upload-text');
+            const uploadHint = document.getElementById('upload-hint');
+            if (uploadIcon) uploadIcon.style.display = '';
+            if (uploadText) uploadText.style.display = '';
+            if (uploadHint) uploadHint.style.display = '';
+        }
+
+        // 为下载和重置按钮添加事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', downloadResult);
+            }
+
+            if (resetBtn) {
+                resetBtn.addEventListener('click', resetApp);
+            }
+
+            // 初始化隐藏按钮
+            if (downloadBtn) downloadBtn.style.display = 'none';
+            if (resetBtn) resetBtn.style.display = 'none';
+        });
+        // 初始化应用
+        init();
+    </script>
+</body>
+</html>
